@@ -47,3 +47,5 @@ class GeologoAI:
         except Exception as e:
             print(f"Error en query: {e}")
             return []
+
+#python -m modal deploy bot_modal.py
