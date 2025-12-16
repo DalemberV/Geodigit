@@ -1,6 +1,5 @@
 % =======================================================
-% GEOLOGIA.PL - VERSIÓN 6.0 (PRECISIÓN TOTAL + FLEXIBILIDAD)
-% Cubre: Diagrama QAPF completo (15 campos) y Modo Campo robusto.
+% GEOLOGIA.PL - VERSIÓN 7.0 (JERARQUÍA ESTRICTA)
 % =======================================================
 
 :- dynamic tiene_textura/1.
@@ -8,82 +7,82 @@
 :- dynamic indice_color/1.
 
 % =======================================================
-% MODULO 1: CLASIFICACIÓN CUALITATIVA (VISUAL / MODO CAMPO)
-% Permite variaciones de color y mezclas de minerales.
+% MODULO 1: CLASIFICACIÓN VISUAL (Orden: Específico -> General)
 % =======================================================
 
-% --- A. ROCAS FÉLSICAS (CON CUARZO VISIBLE) ---
-
-% Granito: Típicamente Leucocrático, pero aceptamos Mesocrático.
-identificar_visual(granito) :- 
-    tiene_textura(faneritica), 
-    (indice_color(leucocratico) ; indice_color(mesocratico)), 
-    tiene_mineral(cuarzo), 
-    tiene_mineral(feldespato_k),
-    \+ tiene_mineral(olivino).
-
-% Granodiorita: Plagioclasa dominante sobre K.
-identificar_visual(granodiorita) :- 
-    tiene_textura(faneritica), 
-    (indice_color(leucocratico) ; indice_color(mesocratico)), 
-    tiene_mineral(cuarzo), 
-    tiene_mineral(plagioclasa),
-    \+ tiene_mineral(olivino).
-
-% Cuarzo Monzonita: El caso intermedio (FK + Plag + Q + Color medio).
-identificar_visual('cuarzo_monzonita') :-
+% --- NIVEL 1: LOS TRES MINERALES (Q + FK + Plag) ---
+% Esta regla va PRIMERO. Si tiene los 3, atrapamos la roca aquí.
+identificar_visual('Granito (Monzogranito) / Cuarzo Monzonita') :-
     tiene_textura(faneritica),
-    (indice_color(leucocratico) ; indice_color(mesocratico)),
     tiene_mineral(cuarzo),
     tiene_mineral(feldespato_k),
     tiene_mineral(plagioclasa),
     \+ tiene_mineral(olivino).
 
-% Riolita (Volcánica)
-identificar_visual(riolita) :- 
-    tiene_textura(afanitica), 
-    tiene_mineral(cuarzo),
+% --- NIVEL 2: PARES FÉLSICOS (Con Cuarzo) ---
+
+% Granito de Feld. Alcalino: Tiene FK y Q, pero PROHIBIMOS Plagioclasa.
+% (Si tuviera plagioclasa, habría caído en la regla de arriba).
+identificar_visual('Granito de Feld. Alcalino') :- 
+    tiene_textura(faneritica), 
+    tiene_mineral(cuarzo), 
+    tiene_mineral(feldespato_k),
+    \+ tiene_mineral(plagioclasa), 
     \+ tiene_mineral(olivino).
 
-% Dacita (Volcánica)
-identificar_visual(dacita) :- 
-    tiene_textura(afanitica), 
+% Granodiorita / Tonalita: Tiene Plag y Q, pero PROHIBIMOS FK.
+identificar_visual('Granodiorita / Tonalita') :- 
+    tiene_textura(faneritica), 
     tiene_mineral(cuarzo), 
-    tiene_mineral(plagioclasa).
+    tiene_mineral(plagioclasa),
+    \+ tiene_mineral(feldespato_k),
+    \+ tiene_mineral(olivino).
+
+% Riolita (Afanítica)
+identificar_visual(riolita) :- tiene_textura(afanitica), tiene_mineral(cuarzo), \+ tiene_mineral(olivino).
 
 
-% --- B. ROCAS INTERMEDIAS (POCO O NADA DE CUARZO) ---
+% --- NIVEL 3: PARES INTERMEDIOS (Sin Cuarzo) ---
 
-% Sienita: FK dominante. Sin Cuarzo (o muy poco).
+% Monzonita: Tiene FK y Plag, pero PROHIBIMOS Cuarzo.
+identificar_visual(monzonita) :-
+    tiene_textura(faneritica),
+    tiene_mineral(feldespato_k),
+    tiene_mineral(plagioclasa),
+    \+ tiene_mineral(cuarzo).
+
+% Volcánica equiv: Latita
+identificar_visual(latita) :-
+    tiene_textura(afanitica),
+    tiene_mineral(feldespato_k),
+    tiene_mineral(plagioclasa),
+    \+ tiene_mineral(cuarzo).
+
+
+% --- NIVEL 4: UN SOLO MINERAL DOMINANTE ---
+
+% Sienita: Solo FK. Prohibido Q y Plag.
 identificar_visual(sienita) :-
     tiene_textura(faneritica),
     tiene_mineral(feldespato_k),
     \+ tiene_mineral(cuarzo),
     \+ tiene_mineral(plagioclasa).
 
-% Monzonita: FK + Plagioclasa. Sin Cuarzo.
-identificar_visual(monzonita) :-
-    tiene_textura(faneritica),
-    (indice_color(leucocratico) ; indice_color(mesocratico)),
-    tiene_mineral(feldespato_k),
-    tiene_mineral(plagioclasa),
-    \+ tiene_mineral(cuarzo).
-
-% Diorita: Plagioclasa + Anfíbol. Sin FK.
+% Diorita: Solo Plag (+ máficos). Prohibido Q y FK.
 identificar_visual(diorita) :- 
     tiene_textura(faneritica), 
     tiene_mineral(plagioclasa), 
-    tiene_mineral(anfibol),
     \+ tiene_mineral(cuarzo),
     \+ tiene_mineral(feldespato_k).
 
-% Volcánicas Intermedias
+% Traquita (Volcánica Sienita)
 identificar_visual(traquita) :- tiene_textura(afanitica), tiene_mineral(feldespato_k), \+ tiene_mineral(cuarzo).
-identificar_visual(latita)   :- tiene_textura(afanitica), tiene_mineral(feldespato_k), tiene_mineral(plagioclasa), \+ tiene_mineral(cuarzo).
+
+% Andesita (Volcánica Diorita)
 identificar_visual(andesita) :- tiene_textura(afanitica), tiene_mineral(plagioclasa).
 
 
-% --- C. ROCAS MÁFICAS Y ULTRAMÁFICAS ---
+% --- NIVEL 5: MÁFICAS Y OTRAS ---
 
 identificar_visual(gabro) :- 
     tiene_textura(faneritica), 
@@ -92,26 +91,21 @@ identificar_visual(gabro) :-
 
 identificar_visual(peridotita) :- 
     tiene_textura(faneritica), 
-    indice_color(ultramafico), 
     tiene_mineral(olivino).
 
 identificar_visual(basalto) :- 
     tiene_textura(afanitica), 
     indice_color(melanocratico).
 
-
-% --- D. TEXTURAS ESPECIALES ---
+% Texturas únicas
 identificar_visual(obsidiana) :- tiene_textura(vitrea).
 identificar_visual(piedra_pomez) :- tiene_textura(vesicular), indice_color(leucocratico).
 identificar_visual(escoria) :- tiene_textura(vesicular), indice_color(melanocratico).
 identificar_visual(toba) :- tiene_textura(piroclastica).
 
-
 % =======================================================
-% MODULO 2: CLASIFICACIÓN CUANTITATIVA (STRECKEISEN MATEMÁTICO)
-% Detalle completo de campos QAPF.
+% MODULO 2: QAPF CUANTITATIVO (Se mantiene igual)
 % =======================================================
-
 es_plutonica(faneritica).
 es_plutonica(pegmatitica).
 es_volcanica(afanitica).
@@ -119,50 +113,28 @@ es_volcanica(piroclastica).
 es_volcanica(vitrea).
 es_volcanica(vesicular).
 
-% LÓGICA PRINCIPAL
 clasificar_qapf(Textura, Q, A, P, Roca) :-
-    % Cálculo del Ratio de Plagioclasa [0..100]
     ( (A + P) > 0 -> RatioP is (P / (A + P)) * 100 ; RatioP is 0 ),
-    
-    ( es_plutonica(Textura) -> 
-        clasificar_plutonica(Q, RatioP, Roca) 
-    ; 
-        clasificar_volcanica(Q, RatioP, Roca) 
-    ).
+    ( es_plutonica(Textura) -> clasificar_plutonica(Q, RatioP, Roca) ; clasificar_volcanica(Q, RatioP, Roca) ).
 
-% --- REGLAS PLUTÓNICAS (Triángulo QAP Superior) ---
-
-% 1. CAMPO DE CUARZO EXTREMO (>90%)
-clasificar_plutonica(Q, _, 'Cuarzolita (Silexita)') :- Q > 90.
-
-% 2. CAMPO DE TRANSICIÓN (60-90%)
+% PLUTÓNICAS
+clasificar_plutonica(Q, _, 'Cuarzolita') :- Q > 90.
 clasificar_plutonica(Q, _, 'Granitoide rico en cuarzo') :- Q > 60, Q =< 90.
+clasificar_plutonica(Q, RatioP, 'Granito de Feld. Alc.') :- Q > 20, Q =< 60, RatioP >= 0, RatioP < 10.
+clasificar_plutonica(Q, RatioP, 'Sienogranito') :- Q > 20, Q =< 60, RatioP >= 10, RatioP < 35.
+clasificar_plutonica(Q, RatioP, 'Monzogranito') :- Q > 20, Q =< 60, RatioP >= 35, RatioP < 65.
+clasificar_plutonica(Q, RatioP, 'Granodiorita') :- Q > 20, Q =< 60, RatioP >= 65, RatioP < 90.
+clasificar_plutonica(Q, RatioP, 'Tonalita') :- Q > 20, Q =< 60, RatioP >= 90.
 
-% 3. BANDA GRANÍTICA (20-60%)
-clasificar_plutonica(Q, RatioP, 'Granito de Feld. Alcalino') :- Q > 20, Q =< 60, RatioP >= 0, RatioP < 10.
-clasificar_plutonica(Q, RatioP, 'Sienogranito')              :- Q > 20, Q =< 60, RatioP >= 10, RatioP < 35.
-clasificar_plutonica(Q, RatioP, 'Monzogranito')              :- Q > 20, Q =< 60, RatioP >= 35, RatioP < 65.
-clasificar_plutonica(Q, RatioP, 'Granodiorita')              :- Q > 20, Q =< 60, RatioP >= 65, RatioP < 90.
-clasificar_plutonica(Q, RatioP, 'Tonalita')                  :- Q > 20, Q =< 60, RatioP >= 90.
+% INTERMEDIAS / SATURADAS
+clasificar_plutonica(Q, RatioP, 'Sienita (Cuarzosa)') :- Q =< 20, RatioP < 10.
+clasificar_plutonica(Q, RatioP, 'Sienita/Monzonita (Transición)') :- Q =< 20, RatioP >= 10, RatioP < 35.
+clasificar_plutonica(Q, RatioP, 'Monzonita (Cuarzosa)') :- Q =< 20, RatioP >= 35, RatioP < 65.
+clasificar_plutonica(Q, RatioP, 'Monzodiorita (Cuarzosa)') :- Q =< 20, RatioP >= 65, RatioP < 90.
+clasificar_plutonica(Q, RatioP, 'Diorita / Gabro') :- Q =< 20, RatioP >= 90.
 
-% 4. BANDA CUARZOSA (5-20%) - Aquí es donde estaba la simplificación que corregimos
-clasificar_plutonica(Q, RatioP, 'Sienita de Feld. Alc. Cuarzosa') :- Q > 5, Q =< 20, RatioP >= 0, RatioP < 10.
-clasificar_plutonica(Q, RatioP, 'Sienita Cuarzosa')               :- Q > 5, Q =< 20, RatioP >= 10, RatioP < 35.
-clasificar_plutonica(Q, RatioP, 'Monzonita Cuarzosa')             :- Q > 5, Q =< 20, RatioP >= 35, RatioP < 65.
-clasificar_plutonica(Q, RatioP, 'Monzodiorita / Monzogabro Cuarzoso') :- Q > 5, Q =< 20, RatioP >= 65, RatioP < 90.
-clasificar_plutonica(Q, RatioP, 'Diorita / Gabro Cuarzoso')       :- Q > 5, Q =< 20, RatioP >= 90.
-
-% 5. BANDA SATURADA (0-5%)
-clasificar_plutonica(Q, RatioP, 'Sienita de Feld. Alcalino') :- Q =< 5, RatioP >= 0, RatioP < 10.
-clasificar_plutonica(Q, RatioP, 'Sienita')                   :- Q =< 5, RatioP >= 10, RatioP < 35.
-clasificar_plutonica(Q, RatioP, 'Monzonita')                 :- Q =< 5, RatioP >= 35, RatioP < 65.
-clasificar_plutonica(Q, RatioP, 'Monzodiorita / Monzogabro') :- Q =< 5, RatioP >= 65, RatioP < 90.
-clasificar_plutonica(Q, RatioP, 'Diorita / Gabro')           :- Q =< 5, RatioP >= 90.
-
-
-% --- REGLAS VOLCÁNICAS (Simplificadas pero completas) ---
-
-clasificar_volcanica(Q, _, 'Riolita') :- Q > 20. % Generalización para Riolita/Dacita si no tenemos Feldspato claro
-clasificar_volcanica(Q, RatioP, 'Traquita')           :- Q =< 20, RatioP < 35. % Agrupa Feld Alc y Traquita normal
-clasificar_volcanica(Q, RatioP, 'Latita')             :- Q =< 20, RatioP >= 35, RatioP < 65.
+% VOLCÁNICAS
+clasificar_volcanica(Q, _, 'Riolita') :- Q > 20.
+clasificar_volcanica(Q, RatioP, 'Traquita') :- Q =< 20, RatioP < 35.
+clasificar_volcanica(Q, RatioP, 'Latita') :- Q =< 20, RatioP >= 35, RatioP < 65.
 clasificar_volcanica(Q, RatioP, 'Andesita / Basalto') :- Q =< 20, RatioP >= 65.
