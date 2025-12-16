@@ -1,92 +1,92 @@
 import streamlit as st
 from cerebro import GeologoAI
 
-# 1. Configuración de página
-st.set_page_config(page_title="Identificador de Rocas Ígneas", layout="centered")
+st.set_page_config(page_title="Calculadora Streckeisen QAPF", page_icon="🌋")
 
-# 2. Instanciamos el Cerebro (Conexión con Prolog)
-# Usamos @st.cache_resource para no recargar Prolog en cada clic (optimización)
+# Cargar cerebro
 @st.cache_resource
 def cargar_cerebro():
     return GeologoAI()
 
 cerebro = cargar_cerebro()
 
-# 3. Título y Descripción
-st.title("⚒️ Clasificación QAPF")
-st.markdown("""
-Este sistema experto utiliza lógica simbólica (Prolog) basada en los criterios de 
-**Streckeisen** para identificar rocas ígneas.
-""")
+st.title("🌋 Clasificación QAPF de Streckeisen")
+st.markdown("Identificación cuantitativa de rocas ígneas basada en porcentajes modales.")
+
+# --- 1. SELECCIÓN DE TEXTURA (DEFINE EL TRIÁNGULO) ---
+st.subheader("1. Textura y Ambiente")
+col_tex1, col_tex2 = st.columns(2)
+
+with col_tex1:
+    textura_ui = st.selectbox(
+        "Textura de la Roca",
+        ["Faneritica (Grano grueso)", "Afanitica (Grano fino)", "Vitrea", "Vesicular", "Piroclastica"]
+    )
+    # Mapeo simple para enviar a Python
+    mapa_tex = {
+        "Faneritica (Grano grueso)": "faneritica",
+        "Afanitica (Grano fino)": "afanitica",
+        "Vitrea": "vitrea",
+        "Vesicular": "vesicular",
+        "Piroclastica": "piroclastica"
+    }
+    textura_final = mapa_tex[textura_ui]
+
+with col_tex2:
+    if textura_final == "faneritica":
+        st.info("Ambiente: **Intrusivo (Plutónico)**. Se usará el diagrama superior.")
+    elif textura_final in ["vitrea", "vesicular", "piroclastica"]:
+        st.warning("Estas texturas suelen clasificarse directamente, sin conteo QAP.")
+    else:
+        st.info("Ambiente: **Extrusivo (Volcánico)**. Se usará el diagrama inferior.")
 
 st.divider()
 
-# --- FORMULARIO DE ENTRADA ---
+# --- 2. ENTRADA DE PORCENTAJES (SLIDERS) ---
+st.subheader("2. Composición Modal (%)")
+st.caption("Ajusta los valores. La suma debe ser exactamente 100%.")
 
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.subheader("1. Textura")
-    # Diccionario: Lo que ve el usuario -> Lo que entiende Prolog
-    mapa_texturas = {
-        "Grano Grueso (Fanerítica)": "faneritica",
-        "Grano Fino (Afanítica)": "afanitica",
-        "Vitrea (Obsidiana)": "vitrea",
-        "Vesicular (Burbujas)": "vesicular",
-        "Pegmatítica (Granos gigantes)": "pegmatitica",
-        "Piroclástica (Fragmentos)": "piroclastica"
-    }
-    opcion_textura = st.radio("Selecciona la textura principal:", list(mapa_texturas.keys()))
-    
-    # Obtenemos el átomo para Prolog
-    textura_prolog = mapa_texturas[opcion_textura]
-
+    q = st.number_input("Cuarzo (Q)", min_value=0, max_value=100, value=20)
 with col2:
-    st.subheader("2. Índice de Color")
-    mapa_color = {
-        "Claro (Leucocrático 0-35%)": "leucocratico",
-        "Medio (Mesocrático 35-65%)": "mesocratico",
-        "Oscuro (Melanocrático 65-90%)": "melanocratico",
-        "Verde/Negro (Ultramáfico >90%)": "ultramafico"
-    }
-    opcion_color = st.radio("Selecciona el índice de color:", list(mapa_color.keys()))
-    color_prolog = mapa_color[opcion_color]
+    a = st.number_input("Feld. Alcalino (A)", min_value=0, max_value=100, value=20)
+with col3:
+    p = st.number_input("Plagioclasa (P)", min_value=0, max_value=100, value=60)
 
-st.subheader("3. Mineralogía Esencial")
-st.info("Selecciona TODOS los minerales que puedas identificar en la muestra de mano.")
+suma = q + a + p
+progreso = suma / 100.0 if suma <= 100 else 1.0
 
-mapa_minerales = {
-    "Cuarzo": "cuarzo",
-    "Feldespato Potásico (K)": "feldespato_k",
-    "Plagioclasa": "plagioclasa",
-    "Anfíbol / Biotita": "anfibol",
-    "Piroxeno": "piroxeno",
-    "Olivino": "olivino"
-}
+# Barra de progreso visual para ayudar a sumar 100
+if suma == 100:
+    st.progress(progreso, text=f"Suma Total: {suma}% ✅")
+elif suma < 100:
+    st.progress(progreso, text=f"Suma Total: {suma}% (Faltan {100-suma}%) ⚠️")
+else:
+    st.progress(1.0, text=f"Suma Total: {suma}% (Sobran {suma-100}%) 🛑")
 
-seleccion_minerales = st.multiselect("Minerales presentes:", list(mapa_minerales.keys()))
+# --- 3. BOTÓN DE CÁLCULO ---
+st.divider()
 
-# Convertimos lista de nombres bonitos a lista de átomos Prolog
-minerales_prolog = [mapa_minerales[m] for m in seleccion_minerales]
-
-# --- BOTÓN DE EJECUCIÓN ---
-if st.button("🔍 Analizar Muestra", type="primary"):
-    with st.spinner('Consultando base de conocimiento geológico...'):
-        
-        # LLAMADA AL CEREBRO
-        # Pasamos listas: [textura], [minerales], color
-        resultados = cerebro.identificar([textura_prolog], minerales_prolog, color_prolog)
+if st.button("🔍 Clasificar Roca", type="primary"):
+    if suma != 100:
+        st.error(f"❌ Los porcentajes deben sumar exactamente 100%. Suma actual: {suma}%")
+    else:
+        # Llamamos a la nueva función numérica
+        resultados = cerebro.identificar_qapf(textura_final, q, a, p)
         
         if resultados:
-            st.success(f"✅ Identificación Exitosa")
-            for roca in resultados:
-                st.header(f"Roca: {roca.upper()}")
-                
-            # Explicación contextual (Opcional)
-            if "granito" in resultados:
-                st.caption("Nota: Roca intrusiva félsica común en la corteza continental.")
-            if "basalto" in resultados:
-                st.caption("Nota: Roca extrusiva máfica, común en fondos oceánicos.")
+            st.success(f"### Roca Identificada: {resultados[0].upper().replace('_', ' ')}")
+            
+            # Datos visuales extra
+            st.json({
+                "Textura": textura_final,
+                "Q": f"{q}%",
+                "A": f"{a}%",
+                "P": f"{p}%",
+                "Resultado": resultados[0]
+            })
         else:
-            st.error("❌ No se encontró una clasificación exacta.")
-            st.warning("Prueba verificando si el índice de color coincide con los minerales seleccionados (ej. Olivino + Color Claro es una contradicción).")
+            st.warning("⚠️ No se encontró una clasificación exacta en los rangos definidos.")
+            st.info("Intenta ajustar ligeramente los valores. Los límites de Streckeisen son estrictos.")
