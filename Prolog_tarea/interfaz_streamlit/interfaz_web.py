@@ -1,92 +1,75 @@
 import streamlit as st
 from cerebro import GeologoAI
 
-st.set_page_config(page_title="Calculadora Streckeisen QAPF", page_icon="🌋")
+st.set_page_config(page_title="GeoExpert Pro", page_icon="⚒️", layout="centered")
 
-# Cargar cerebro
 @st.cache_resource
 def cargar_cerebro():
     return GeologoAI()
 
 cerebro = cargar_cerebro()
 
-st.title("🌋 Clasificación QAPF de Streckeisen")
-st.markdown("Identificación cuantitativa de rocas ígneas basada en porcentajes modales.")
+st.title("⚒️ GeoExpert AI")
+st.markdown("Sistema experto para clasificación de rocas ígneas.")
 
-# --- 1. SELECCIÓN DE TEXTURA (DEFINE EL TRIÁNGULO) ---
-st.subheader("1. Textura y Ambiente")
-col_tex1, col_tex2 = st.columns(2)
+# CREACIÓN DE PESTAÑAS
+tab1, tab2 = st.tabs(["🔍 MODO CAMPO (Visual)", "🧪 MODO LAB (Streckeisen)"])
 
-with col_tex1:
-    textura_ui = st.selectbox(
-        "Textura de la Roca",
-        ["Faneritica (Grano grueso)", "Afanitica (Grano fino)", "Vitrea", "Vesicular", "Piroclastica"]
-    )
-    # Mapeo simple para enviar a Python
-    mapa_tex = {
-        "Faneritica (Grano grueso)": "faneritica",
-        "Afanitica (Grano fino)": "afanitica",
-        "Vitrea": "vitrea",
-        "Vesicular": "vesicular",
-        "Piroclastica": "piroclastica"
-    }
-    textura_final = mapa_tex[textura_ui]
-
-with col_tex2:
-    if textura_final == "faneritica":
-        st.info("Ambiente: **Intrusivo (Plutónico)**. Se usará el diagrama superior.")
-    elif textura_final in ["vitrea", "vesicular", "piroclastica"]:
-        st.warning("Estas texturas suelen clasificarse directamente, sin conteo QAP.")
-    else:
-        st.info("Ambiente: **Extrusivo (Volcánico)**. Se usará el diagrama inferior.")
-
-st.divider()
-
-# --- 2. ENTRADA DE PORCENTAJES (SLIDERS) ---
-st.subheader("2. Composición Modal (%)")
-st.caption("Ajusta los valores. La suma debe ser exactamente 100%.")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    q = st.number_input("Cuarzo (Q)", min_value=0, max_value=100, value=20)
-with col2:
-    a = st.number_input("Feld. Alcalino (A)", min_value=0, max_value=100, value=20)
-with col3:
-    p = st.number_input("Plagioclasa (P)", min_value=0, max_value=100, value=60)
-
-suma = q + a + p
-progreso = suma / 100.0 if suma <= 100 else 1.0
-
-# Barra de progreso visual para ayudar a sumar 100
-if suma == 100:
-    st.progress(progreso, text=f"Suma Total: {suma}% ✅")
-elif suma < 100:
-    st.progress(progreso, text=f"Suma Total: {suma}% (Faltan {100-suma}%) ⚠️")
-else:
-    st.progress(1.0, text=f"Suma Total: {suma}% (Sobran {suma-100}%) 🛑")
-
-# --- 3. BOTÓN DE CÁLCULO ---
-st.divider()
-
-if st.button("🔍 Clasificar Roca", type="primary"):
-    if suma != 100:
-        st.error(f"❌ Los porcentajes deben sumar exactamente 100%. Suma actual: {suma}%")
-    else:
-        # Llamamos a la nueva función numérica
-        resultados = cerebro.identificar_qapf(textura_final, q, a, p)
+# ==========================================
+# PESTAÑA 1: MODO CUALITATIVO (Lo que tenías antes)
+# ==========================================
+with tab1:
+    st.header("Identificación Visual")
+    st.caption("Usa esto si no tienes porcentajes exactos, solo observación de muestra de mano.")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        textura_v = st.selectbox("Textura", ["Faneritica", "Afanitica", "Vitrea", "Vesicular", "Piroclastica"], key="t_vis")
+    with c2:
+        color_v = st.selectbox("Índice de Color", ["Leucocratico", "Mesocratico", "Melanocratico", "Ultramafico"], key="c_vis")
         
-        if resultados:
-            st.success(f"### Roca Identificada: {resultados[0].upper().replace('_', ' ')}")
-            
-            # Datos visuales extra
-            st.json({
-                "Textura": textura_final,
-                "Q": f"{q}%",
-                "A": f"{a}%",
-                "P": f"{p}%",
-                "Resultado": resultados[0]
-            })
+    minerales_v = st.multiselect("Minerales Visibles", 
+        ["Cuarzo", "Feldespato K", "Plagioclasa", "Anfibol", "Piroxeno", "Olivino"], key="m_vis")
+        
+    if st.button("Identificar (Visual)", type="primary"):
+        # Mapeo de nombres bonitos a átomos de Prolog
+        min_map = {
+            "Cuarzo": "cuarzo", "Feldespato K": "feldespato_k", "Plagioclasa": "plagioclasa",
+            "Anfibol": "anfibol", "Piroxeno": "piroxeno", "Olivino": "olivino"
+        }
+        min_prolog = [min_map[m] for m in minerales_v]
+        
+        res = cerebro.identificar_visual(textura_v, min_prolog, color_v)
+        
+        if res:
+            st.success(f"Roca probable: **{res[0].upper()}**")
         else:
-            st.warning("⚠️ No se encontró una clasificación exacta en los rangos definidos.")
-            st.info("Intenta ajustar ligeramente los valores. Los límites de Streckeisen son estrictos.")
+            st.warning("No coincide con una clasificación estándar.")
+
+# ==========================================
+# PESTAÑA 2: MODO CUANTITATIVO (QAPF)
+# ==========================================
+with tab2:
+    st.header("Diagrama QAPF")
+    st.caption("Clasificación precisa usando porcentajes modales.")
+    
+    textura_q = st.selectbox("Textura", ["Faneritica", "Afanitica"], key="t_qap")
+    
+    c1, c2, c3 = st.columns(3)
+    q = c1.number_input("Q (%)", 0, 100, 20)
+    a = c2.number_input("A (%)", 0, 100, 20)
+    p = c3.number_input("P (%)", 0, 100, 60)
+    
+    total = q + a + p
+    st.progress(min(total/100, 1.0), text=f"Suma: {total}%")
+    
+    if st.button("Calcular QAPF"):
+        if total != 100:
+            st.error("La suma debe ser 100%.")
+        else:
+            res = cerebro.identificar_qapf(textura_q, q, a, p)
+            if res:
+                st.success(f"Clasificación Streckeisen: **{res[0]}**")
+            else:
+                # Esto ya no debería pasar con la nueva lógica matemática
+                st.error("Error de cálculo en el diagrama.")
