@@ -1,51 +1,49 @@
-from pyswip import Prolog
 import os
+import sys
+import glob
+import ctypes
+from pyswip import Prolog
 
 class GeologoAI:
     def __init__(self):
-        self.prolog = Prolog()
-        # En Modal, los archivos montados van a /root. 
-        # Usamos ruta absoluta para evitar problemas.
-        ruta_prolog = "/root/geologia.pl"
+        # --- BLOQUE LINUX (Mismo de antes) ---
+        if sys.platform.startswith('linux'):
+            paths = glob.glob("/usr/lib/*/libswipl.so*") + \
+                    glob.glob("/usr/lib/swi-prolog/lib/*/libswipl.so*")
+            if paths:
+                ctypes.CDLL(sorted(paths)[-1], mode=ctypes.RTLD_GLOBAL)
         
-        # Verificación de seguridad
-        if not os.path.exists(ruta_prolog):
-            print(f"⚠️ ERROR CRÍTICO: No encuentro {ruta_prolog}")
-            # Intento fallback por si se corre en local
-            if os.path.exists("geologia.pl"):
-                ruta_prolog = "geologia.pl"
+        self.prolog = Prolog()
+        directorio = os.path.dirname(os.path.abspath(__file__))
+        ruta = os.path.join(directorio, "geologia.pl").replace("\\", "/")
+        self.prolog.consult(ruta)
 
+    # --- MODO LABORATORIO (NUMÉRICO) ---
+    def identificar_qapf(self, textura, q, a, p):
+        textura_atom = textura.lower().replace(" ", "_")
+        query = f"clasificar_qapf({textura_atom}, {q}, {a}, {p}, Roca)"
         try:
-            self.prolog.consult(ruta_prolog)
-            print(f"✅ Base de conocimientos cargada desde: {ruta_prolog}")
-        except Exception as e:
-            print(f"❌ Error cargando Prolog: {e}")
+            return [sol['Roca'] for sol in self.prolog.query(query)]
+        except: return []
 
-    def identificar(self, texturas, minerales, color):
-        # 1. Limpiar hechos anteriores de la memoria de Prolog
-        list(self.prolog.query("retractall(tiene_textura(_))"))
-        list(self.prolog.query("retractall(tiene_mineral(_))"))
-        list(self.prolog.query("retractall(indice_color(_))"))
-
-        # 2. Insertar nuevos hechos (assertz)
-        for t in texturas:
-            self.prolog.assertz(f"tiene_textura({t})")
+    # --- MODO CAMPO (VISUAL) ---
+    def identificar_visual(self, textura, minerales, color):
+        # Limpiar memoria anterior
+        self.prolog.retractall("tiene_textura(_)")
+        self.prolog.retractall("tiene_mineral(_)")
+        self.prolog.retractall("indice_color(_)")
+        
+        # Insertar hechos nuevos
+        t_atom = textura.lower().replace(" ", "_")
+        c_atom = color.lower().replace(" ", "_")
+        
+        self.prolog.assertz(f"tiene_textura({t_atom})")
+        self.prolog.assertz(f"indice_color({c_atom})")
         
         for m in minerales:
-            self.prolog.assertz(f"tiene_mineral({m})")
+            m_atom = m.lower().replace(" ", "_")
+            self.prolog.assertz(f"tiene_mineral({m_atom})")
             
-        if color:
-            self.prolog.assertz(f"indice_color({color})")
-
-        # 3. Preguntar al oráculo
         try:
-            soluciones = list(self.prolog.query("identificar_roca(X)"))
-            # Extraer el valor 'X' de cada solución
-            rocas = [sol['X'] for sol in soluciones]
-            # Eliminar duplicados si los hubiera
-            return list(set(rocas))
-        except Exception as e:
-            print(f"Error en query: {e}")
-            return []
-
-#python -m modal deploy bot_modal.py
+            return [sol['X'] for sol in self.prolog.query("identificar_visual(X)")]
+        except: return []
