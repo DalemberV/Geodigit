@@ -1,5 +1,5 @@
 % =======================================================
-% GEOLOGIA.PL - VERSIÓN 7.0 (JERARQUÍA ESTRICTA)
+% GEOLOGIA.PL - VERSIÓN 8.0 (JERARQUÍA + COLOR INDEX)
 % =======================================================
 
 :- dynamic tiene_textura/1.
@@ -7,104 +7,132 @@
 :- dynamic indice_color/1.
 
 % =======================================================
-% MODULO 1: CLASIFICACIÓN VISUAL (Orden: Específico -> General)
+% MODULO 1: CLASIFICACIÓN VISUAL (MODO CAMPO)
 % =======================================================
+% NOTA: El orden de las reglas importa (Prolog busca de arriba a abajo).
 
-% --- NIVEL 1: LOS TRES MINERALES (Q + FK + Plag) ---
-% Esta regla va PRIMERO. Si tiene los 3, atrapamos la roca aquí.
-identificar_visual('Granito (Monzogranito) / Cuarzo Monzonita') :-
+% -------------------------------------------------------
+% NIVEL 1: LOS TRES MINERALES (Q + FK + Plag)
+% -------------------------------------------------------
+identificar_visual('Cuarzo Monzonita / Granito (Monzogranito)') :-
     tiene_textura(faneritica),
+    (indice_color(leucocratico) ; indice_color(mesocratico)), % Filtro Color
     tiene_mineral(cuarzo),
     tiene_mineral(feldespato_k),
     tiene_mineral(plagioclasa),
     \+ tiene_mineral(olivino).
 
-% --- NIVEL 2: PARES FÉLSICOS (Con Cuarzo) ---
+% -------------------------------------------------------
+% NIVEL 2: PARES FÉLSICOS (Con Cuarzo OBLIGATORIO)
+% -------------------------------------------------------
 
-% Granito de Feld. Alcalino: Tiene FK y Q, pero PROHIBIMOS Plagioclasa.
-% (Si tuviera plagioclasa, habría caído en la regla de arriba).
+% Granito de Feld. Alcalino (Sienogranito)
 identificar_visual('Granito de Feld. Alcalino') :- 
     tiene_textura(faneritica), 
+    (indice_color(leucocratico) ; indice_color(mesocratico)),
     tiene_mineral(cuarzo), 
     tiene_mineral(feldespato_k),
-    \+ tiene_mineral(plagioclasa), 
+    \+ tiene_mineral(plagioclasa), % Si tuviera Plag, sería Nivel 1
     \+ tiene_mineral(olivino).
 
-% Granodiorita / Tonalita: Tiene Plag y Q, pero PROHIBIMOS FK.
+% Granodiorita / Tonalita
 identificar_visual('Granodiorita / Tonalita') :- 
     tiene_textura(faneritica), 
+    (indice_color(leucocratico) ; indice_color(mesocratico)),
     tiene_mineral(cuarzo), 
     tiene_mineral(plagioclasa),
     \+ tiene_mineral(feldespato_k),
     \+ tiene_mineral(olivino).
 
-% Riolita (Afanítica)
-identificar_visual(riolita) :- tiene_textura(afanitica), tiene_mineral(cuarzo), \+ tiene_mineral(olivino).
+% Riolita (Volcánica)
+identificar_visual(riolita) :- 
+    tiene_textura(afanitica), 
+    (indice_color(leucocratico) ; indice_color(mesocratico)),
+    tiene_mineral(cuarzo), 
+    \+ tiene_mineral(olivino).
 
+% -------------------------------------------------------
+% NIVEL 3: PARES INTERMEDIOS (Sin Cuarzo)
+% -------------------------------------------------------
 
-% --- NIVEL 3: PARES INTERMEDIOS (Sin Cuarzo) ---
-
-% Monzonita: Tiene FK y Plag, pero PROHIBIMOS Cuarzo.
+% Monzonita (FK + Plag)
 identificar_visual(monzonita) :-
     tiene_textura(faneritica),
+    (indice_color(leucocratico) ; indice_color(mesocratico)),
     tiene_mineral(feldespato_k),
     tiene_mineral(plagioclasa),
     \+ tiene_mineral(cuarzo).
 
-% Volcánica equiv: Latita
+% Latita (Volcánica)
 identificar_visual(latita) :-
     tiene_textura(afanitica),
     tiene_mineral(feldespato_k),
     tiene_mineral(plagioclasa),
     \+ tiene_mineral(cuarzo).
 
+% -------------------------------------------------------
+% NIVEL 4: UN SOLO MINERAL DOMINANTE
+% -------------------------------------------------------
 
-% --- NIVEL 4: UN SOLO MINERAL DOMINANTE ---
-
-% Sienita: Solo FK. Prohibido Q y Plag.
+% Sienita (Solo FK)
 identificar_visual(sienita) :-
     tiene_textura(faneritica),
+    (indice_color(leucocratico) ; indice_color(mesocratico)),
     tiene_mineral(feldespato_k),
     \+ tiene_mineral(cuarzo),
     \+ tiene_mineral(plagioclasa).
 
-% Diorita: Solo Plag (+ máficos). Prohibido Q y FK.
+% Diorita (Solo Plag + Máficos)
 identificar_visual(diorita) :- 
     tiene_textura(faneritica), 
+    (indice_color(mesocratico) ; indice_color(melanocratico)), % Diorita puede ser oscura
     tiene_mineral(plagioclasa), 
     \+ tiene_mineral(cuarzo),
     \+ tiene_mineral(feldespato_k).
 
 % Traquita (Volcánica Sienita)
-identificar_visual(traquita) :- tiene_textura(afanitica), tiene_mineral(feldespato_k), \+ tiene_mineral(cuarzo).
+identificar_visual(traquita) :- 
+    tiene_textura(afanitica), 
+    tiene_mineral(feldespato_k), 
+    \+ tiene_mineral(cuarzo).
 
 % Andesita (Volcánica Diorita)
-identificar_visual(andesita) :- tiene_textura(afanitica), tiene_mineral(plagioclasa).
+identificar_visual(andesita) :- 
+    tiene_textura(afanitica), 
+    tiene_mineral(plagioclasa).
 
+% -------------------------------------------------------
+% NIVEL 5: MÁFICAS Y ULTRAMÁFICAS (Color Oscuro OBLIGATORIO)
+% -------------------------------------------------------
 
-% --- NIVEL 5: MÁFICAS Y OTRAS ---
-
+% Gabro
 identificar_visual(gabro) :- 
     tiene_textura(faneritica), 
-    indice_color(melanocratico), 
+    indice_color(melanocratico), % Debe ser oscuro
     tiene_mineral(piroxeno).
 
+% Peridotita
 identificar_visual(peridotita) :- 
     tiene_textura(faneritica), 
+    indice_color(ultramafico),   % Debe ser verde/negro
     tiene_mineral(olivino).
 
+% Basalto
 identificar_visual(basalto) :- 
     tiene_textura(afanitica), 
     indice_color(melanocratico).
 
-% Texturas únicas
+% -------------------------------------------------------
+% NIVEL 6: TEXTURAS ESPECIALES
+% -------------------------------------------------------
 identificar_visual(obsidiana) :- tiene_textura(vitrea).
-identificar_visual(piedra_pomez) :- tiene_textura(vesicular), indice_color(leucocratico).
+identificar_visual('Piedra Pomez') :- tiene_textura(vesicular), indice_color(leucocratico).
 identificar_visual(escoria) :- tiene_textura(vesicular), indice_color(melanocratico).
 identificar_visual(toba) :- tiene_textura(piroclastica).
 
+
 % =======================================================
-% MODULO 2: QAPF CUANTITATIVO (Se mantiene igual)
+% MODULO 2: QAPF CUANTITATIVO (STRECKEISEN)
 % =======================================================
 es_plutonica(faneritica).
 es_plutonica(pegmatitica).
@@ -126,7 +154,7 @@ clasificar_plutonica(Q, RatioP, 'Monzogranito') :- Q > 20, Q =< 60, RatioP >= 35
 clasificar_plutonica(Q, RatioP, 'Granodiorita') :- Q > 20, Q =< 60, RatioP >= 65, RatioP < 90.
 clasificar_plutonica(Q, RatioP, 'Tonalita') :- Q > 20, Q =< 60, RatioP >= 90.
 
-% INTERMEDIAS / SATURADAS
+% INTERMEDIAS
 clasificar_plutonica(Q, RatioP, 'Sienita (Cuarzosa)') :- Q =< 20, RatioP < 10.
 clasificar_plutonica(Q, RatioP, 'Sienita/Monzonita (Transición)') :- Q =< 20, RatioP >= 10, RatioP < 35.
 clasificar_plutonica(Q, RatioP, 'Monzonita (Cuarzosa)') :- Q =< 20, RatioP >= 35, RatioP < 65.
