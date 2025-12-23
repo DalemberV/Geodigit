@@ -1,0 +1,9 @@
+# Archivos de notas personales
+notas.txt
+
+# Datos pesados de sensores (Carpeta geo-sam)
+geo-sam/
+
+# Temporales de Python y Jupyter
+__pycache__/
+*.ipynb_checkpoints
