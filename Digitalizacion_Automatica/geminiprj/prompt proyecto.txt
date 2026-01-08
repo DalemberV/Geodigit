@@ -34,14 +34,18 @@ Estructura el notebook en bloques, además, cuando te pida cambios, modifica el 
 
 Una vez segmentado los polígonos vamos a hacer ocr mediante Google cloud ocr, para lo cual dispongo del archivo .json del servico account que configure en Google cloud y que puse como rol visión api cloud. considera que este archivo es delicado y para una posterior subida a GitHub habría que configurar como secreto ya sea en GitHub o Google colab. el ocr únicamente se hará dentro de cada polígono e identificara el texto
 
-además de identificar el texto, identificará el color promedio dentro del polígono de la imagen, esto debido a que vamos a empatar el color promedio y el texto identificado con la leyenda para así, asignarle a cada polígono segmentado una categoría
+además de identificar el texto, identificará el color promedio dentro de cada polígono generado, esto debido a que vamos a empatar el color promedio y el texto identificado con la leyenda para así, asignarle a cada polígono segmentado una categoría
 
-la leyenda del mapa geológico tambien deberá ser subida (como foto) aqui el visión de Gemini (es decir la identificación de imágenes de Gemini, como si se usara en el chat normal) identificara y empatara los colores de la leyenda y el nombre de la litología y el código RGB, además hará una tabla de ello
+la leyenda del mapa geológico estará en https://github.com/DalemberV/Geodigit/blob/main/Digitalizacion_Automatica/Mapas%20geol%C3%B3gicos/leyenda_giron.png aqui el visión de Gemini (es decir la identificación de imágenes de Gemini, como si se usara en el chat normal) identificara y empatara los colores de la leyenda y el nombre de la litología y el código RGB, además hará una tabla de ello
 
 luego esta tabla se comparara con lo obtenido por cada polígono en sam, el cual extrajo el color promedio en RGB y el texto en ocr. sin embargo, hay que considerar que ese texto identificado por ocr, no necesariamente va a ser exactamente el nombre de la litología, por ejemplo hay polígonos de geologia donde la trama es "x" o "+" para el caso de granitos, sin embargo esto se le puede indicar por prompt al sistema que si identifica y como resultado están estos caracteres seguramente sea algo igneo y por tanto deba empatarle con las litología identificada en la tabla previa,y si la identificación por ocr no indica mucho puede usar el código RGB promedio para inferir cual es la litología
 
 es decir, será una tabla de la leyenda que diga litología, color RGB
 y otra tabla obtenida de las mascaras de sam que diga litología ocr, color promedio RGB, y la ia analizara estas dos tablas y unira los cabos sueltos, y va a rehacer otra tabla de las mascaras polígonos de sam con los nombres identificados correctamente
+
+el api key de Gemini tambien lo tengo a la mano
+
+--------
 
 finalmente, una vez identificado correctamente la litología, la ia va a interpretar el mapa geologico, esta parte no me queda clara como hacerla quizás, se le pueda entregar visualmente una imagen y la ia la interprete con nanobanana, o sea mejor hacer un json de la delimitación de cada polígono en sam y pasarle eso junto a la tabla corregidaa la ia para queinterprete, para la interpretación debe considerar reglas geológicas, como que pasa si hay intrusivos, cmo seria si hay rocas sedimentarias, etc. actuar como un geologo experto
 
