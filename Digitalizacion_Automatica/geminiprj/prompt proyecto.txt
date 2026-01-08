@@ -1,0 +1,67 @@
+Vamos a realizar un proyecto de digitalización automatica de mapas geológicos con SAM v2
+
+En primer lugar tengo todo mi repositorio en https://github.com/DalemberV/Geodigit/tree/main/Digitalizacion_Automatica
+Tengo la imagen de prueba en
+https://github.com/DalemberV/Geodigit/blob/main/Digitalizacion_Automatica/Mapas%20geol%C3%B3gicos/gironim.png
+
+sin embargo, tambien debe haber otro bloque de código para cargar archivos manualmente
+
+Estoy creando el notebook en kaggle, el cual está conectado a GitHub
+
+Te adjuntare el código que segmenta las imágenes llamado final code sam, este de aquí es interesante porque le modifico los parámetros del automatic segmentator, para que reconozca adecuadamente los polígonos geológicos. Tambien un archivo de lógica que me parecía interesante por la manera al estilo interfaz que permitia controlar la segmentación para hacer un control de calidad, controlando áreas pequeñas, relleno, etc
+
+aunque antes que nada vamos a hacer un preprocesamiento de la imagen donde se ajustara la nitidez y contraste para que la imagen sea más identificable por sam, esto deberá mostrarse como barrras horizontales deslizables que modifique estas características de la imagen, quizás en markdown
+
+
+algunos de los parámetros interesantes que modifique para un test en el automatic mask generator de sam fueron:
+mask_generator = SAM2AutomaticMaskGenerator(
+    model=sam2_model,
+    points_per_side=64,
+    points_per_batch=128,
+    pred_iou_thresh=0.7,
+    stability_score_thresh=0.92,
+    stability_score_offset=0.7,
+    crop_n_layers=1,
+    box_nms_thresh=0.7,
+)
+eso fue para una imagen de 3025*3025 px
+
+otra cuestión, cada que reinicio el notebook, es pesado y demoroso volver a cargar sam, por lo que me gustaría poder almacenar esa descarga que se hace y guardarla como dataset para luego llamarla samdataset, y así a laproxima vez que lo corra, que simplemente se cargue
+
+Estructura el notebook en bloques, además, cuando te pida cambios, modifica el canvas, no crees nuevos canvas, y siempre dime qué bloques cambiaste si hay cambios
+
+--------------------------
+
+Una vez segmentado los polígonos vamos a hacer ocr mediante Google cloud ocr, para lo cual dispongo del archivo .json del servico account que configure en Google cloud y que puse como rol visión api cloud. considera que este archivo es delicado y para una posterior subida a GitHub habría que configurar como secreto ya sea en GitHub o Google colab. el ocr únicamente se hará dentro de cada polígono e identificara el texto
+
+además de identificar el texto, identificará el color promedio dentro del polígono de la imagen, esto debido a que vamos a empatar el color promedio y el texto identificado con la leyenda para así, asignarle a cada polígono segmentado una categoría
+
+la leyenda del mapa geológico tambien deberá ser subida (como foto) aqui el visión de Gemini (es decir la identificación de imágenes de Gemini, como si se usara en el chat normal) identificara y empatara los colores de la leyenda y el nombre de la litología y el código RGB, además hará una tabla de ello
+
+luego esta tabla se comparara con lo obtenido por cada polígono en sam, el cual extrajo el color promedio en RGB y el texto en ocr. sin embargo, hay que considerar que ese texto identificado por ocr, no necesariamente va a ser exactamente el nombre de la litología, por ejemplo hay polígonos de geologia donde la trama es "x" o "+" para el caso de granitos, sin embargo esto se le puede indicar por prompt al sistema que si identifica y como resultado están estos caracteres seguramente sea algo igneo y por tanto deba empatarle con las litología identificada en la tabla previa,y si la identificación por ocr no indica mucho puede usar el código RGB promedio para inferir cual es la litología
+
+es decir, será una tabla de la leyenda que diga litología, color RGB
+y otra tabla obtenida de las mascaras de sam que diga litología ocr, color promedio RGB, y la ia analizara estas dos tablas y unira los cabos sueltos, y va a rehacer otra tabla de las mascaras polígonos de sam con los nombres identificados correctamente
+
+finalmente, una vez identificado correctamente la litología, la ia va a interpretar el mapa geologico, esta parte no me queda clara como hacerla quizás, se le pueda entregar visualmente una imagen y la ia la interprete con nanobanana, o sea mejor hacer un json de la delimitación de cada polígono en sam y pasarle eso junto a la tabla corregidaa la ia para queinterprete, para la interpretación debe considerar reglas geológicas, como que pasa si hay intrusivos, cmo seria si hay rocas sedimentarias, etc. actuar como un geologo experto
+
+
+Divide al código en bloques y coloca respectivos títulos
+
+Inicialmente voy a hacer el notebook en google colab
+pero pensaba pasarlo a n8n y modal ya que deseo que sea
+Ecalable,
+Todos puedan usarlo,
+se pueda Compartir.
+
+Describir todo lo que se hace paso por paso a modo de comentarios, sin embargo no coloques muchos comentarios sino solo en partes clave
+
+
+si hay alternativas mejores en la metodologia, recomienda o sugiere
+
+
+
+visualizar bien resultados
+referenciar los polígonos segmentados
+considera las limitaciones de 12.7gb de sistema y 15 gb de gpu y que no se demore mucho ejecutando el código
+tambien que vaya mostando los tiles segmentados para ir viendo si lo esta haciendo bien, además porque ocupa tanto espacio en ram de gpu? los tiles segmetnados se mantienen en la memoria? novale que primero los segmente uno por uno y los almacene para evitar gastar mucha memoria?
